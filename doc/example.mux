@@ -1,0 +1,80 @@
+; This is an example configuration file that illustrates
+; the structure of the configuration.
+;
+; The configuration file can also be given in JSON format, an
+; example is given in doc/example.json
+;
+; More information about the usage of the tools is available
+; in the guide, which can be found on the
+; www.opendigitalradio.org website.
+;
+; As you can see, comments are defined by semicolons.
+;
+; It consists of six mandatory sections, whose relative order in this
+; file are of no importance.
+
+; The general section defines global multiplex parameters.
+general {
+    ; Set to true to enable logging to syslog
+    syslog false
+
+    ; TSDuck Debug
+    tsduck_debug false
+
+    ; At startup, run the command and abort if is it not returning 0.
+    ; This may be a script. Useful for checking if the NTP client on your
+    ; system has had time to setup the clock.
+    ;startupcheck "chronyc waitsync 10 0.01"
+    ;startupcheck "ntp-wait -fv"
+}
+
+inputs {
+    mux-1 {
+        ; This is our DAB mux, using a udp input - only currently supported option
+        name "Test1"
+        protocol udp
+        source      "239.199.200.1"
+        sourceport  5001
+        sourceip    ""       
+    }
+    mux-2 {
+        ; This is our DAB mux, using a udp input - only currently supported option
+        name "Test2"
+        protocol udp
+        source      "239.199.200.2"
+        sourceport  5001
+        sourceip    ""       
+    }
+
+}
+
+output {
+         protocol ts
+               ts_id 1
+               service_id 1
+               service_name "DabMux"
+               service_provider_name "ODR-DabMux"
+               payload_pid 1234
+               pmt_pid 256
+               service_type 5
+               output srt
+               output_host 192.168.105.2
+               output_port 5102
+               output_source_address 172.27.159.171
+               output_srt_passphrase odrmuxmpetest
+               output_ttl 64
+; UDP
+;                protocol ts
+;                ts_id 1
+;                service_id 1
+;                service_name "DabMux"
+;                service_provider_name "ODR-DabMux"
+;                payload_pid 1234
+;                pmt_pid 256
+;                service_type 5
+;                output udp
+;                output_host 192.168.105.2
+;                output_port 5186
+;                output_source_address 192.168.104.6
+;                output_ttl 64
+}

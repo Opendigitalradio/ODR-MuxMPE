@@ -1,0 +1,39 @@
+{
+    "_comment": "This is the same as example.mux, but in JSON format.",
+    "general": {
+        "syslog": false,
+        "tsduck_debug": false
+    },
+    "inputs": {
+        "mux-1": {
+            "name": "Test1",
+            "protocol": "udp",
+            "source" : "239.199.200.1",
+            "sourceport":  5001,
+            "sourceip" :   ""    
+        },
+        "mux-2": {
+             "name": "Test2",
+             "protocol": "udp",
+             "source" : "239.199.200.2",
+             "sourceport":  5001,
+             "sourceip" :   ""    
+            }
+    },
+    "output": {
+        "protocol": "ts",
+        "ts_id": 1,
+        "service_id": 1,
+        "service_name": "DabMux",
+        "service_provider_name": "ODR-DabMux",
+        "payload_pid": 1234,
+        "pmt_pid" : 256,
+        "service_type": 5,
+        "output" :"srt",
+        "output_host" : "192.168.105.2",
+        "output_port" : 5102,
+        "output_source_address" : "172.27.159.171",
+        "output_srt_passphrase" : "odrmuxmpetest",
+        "output_ttl": 64
+    }
+}
