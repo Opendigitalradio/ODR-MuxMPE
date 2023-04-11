@@ -74,6 +74,8 @@ COPY --from=builder /usr/local/lib/tsduck /usr/local/lib/
 COPY --from=builder /usr/local/share/tsduck /usr/local/share/tsduck
 COPY --from=builder /usr/local/etc/security/console.perms.d/80-tsduck.perms /usr/local/etc/security/console.perms.d/
 COPY --from=builder /usr/local/etc/udev/rules.d/80-tsduck.rules /usr/local/etc/udev/rules.d/
+COPY --from=builder /usr/local/include/oatpp-1.3.0 /usr/local/include/oatpp-1.3.0
+COPY --from=builder /usr/local/lib/oatpp-1.3.0 /usr/local/lib/oatpp-1.3.0
 
 ## Install production libraries
 RUN  apt-get install --yes \
