@@ -12,6 +12,15 @@ Features of ODR-MuxMPE:
 - Logging to syslog
 - Can be API driven for easy K8S/Docker use. - SwaggerUI available: <host>:8000/swagger/ui - POST /config takes Config in JSON
 
+To start with API don't pass a config file, 
+
+odr-muxmpe
+
+The App will run as normal with a config as argument. 
+
+odr-muxmpe doc/example.mux
+
+
 Tested with [fedi2eti](https://github.com/piratfm/eti-tools) and [dablin](https://github.com/Opendigitalradio/dablin/).
 
 The `src/` directory contains the source code of ODR-MuxMPE and the additional
