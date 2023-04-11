@@ -27,10 +27,20 @@
 */
 
 #include <tsduck.h>
+#include "MuxMPEWorker.h"
+
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include "controller/APIController.h"
+#include "AppComponent.h"
+#include "oatpp-swagger/Controller.hpp"
+#include "oatpp/network/Server.hpp"
+#include "oatpp/web/server/HttpRequestHandler.hpp"
+#include "oatpp/web/protocol/http/incoming/Request.hpp"
+#include "oatpp/web/protocol/http/outgoing/ResponseFactory.hpp"
 
 #include <stdlib.h>
 #include <memory>
@@ -49,13 +59,6 @@
 // for basename
 #include <libgen.h>
 
-#include <iterator>
-#include <vector>
-#include <list>
-#include <set>
-#include <map>
-#include <functional>
-#include <algorithm>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -63,11 +66,9 @@
 #include "Log.h"
 #include "utils.h"
 
-
-using namespace std;
-using boost::property_tree::ptree;
-
+bool api_at_startup = false;
 volatile sig_atomic_t running = 1;
+std::shared_ptr<MuxMPEWorker> mpeworker;
 
 /* We are not allowed to use etiLog in the signal handler,
  * because etiLog uses mutexes
@@ -111,6 +112,44 @@ void signalHandler(int signum)
     killpg(0, SIGPIPE);
 #endif
     running = 0;
+}
+
+void runApiServer()
+{
+
+    /* Init oatpp Environment */
+    oatpp::base::Environment::init();
+    
+    /* Register Components in scope of run() method */
+    AppComponent components;
+
+    /* Get router component */
+    OATPP_COMPONENT(std::shared_ptr<oatpp::web::server::HttpRouter>, router);
+
+    auto apiController = std::make_shared<APIController>(mpeworker);
+
+    /* Create APIController and add all of its endpoints to router */
+    router->addController(apiController);
+
+    /* Add Swagger UI */
+    auto swaggerController = oatpp::swagger::Controller::createShared(apiController->getEndpoints());
+    router->addController(swaggerController);
+
+    /* Get connection handler component */
+    OATPP_COMPONENT(std::shared_ptr<oatpp::network::ConnectionHandler>, connectionHandler);
+
+    /* Get connection provider component */
+    OATPP_COMPONENT(std::shared_ptr<oatpp::network::ServerConnectionProvider>, connectionProvider);
+
+    oatpp::network::Server server(connectionProvider, connectionHandler);
+
+    
+
+    /* Print info about server port */
+    //OATPP_LOGI("MyApp", "Server running on port %s", connectionProvider->getProperty("port").getData());
+
+    /* Run server */
+    server.run();
 }
 
 int main(int argc, char *argv[])
@@ -161,14 +200,20 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    int returnCode = 0;
-    ptree pt;
+    etiLog.level(info) << PACKAGE_NAME << " " <<
+#if defined(GITVERSION)
+        GITVERSION <<
+#else
+        PACKAGE_VERSION <<
+#endif
+        " starting up";
 
     try
     {
-        string conf_file = "";
+        std::string conf_file = "";
 
-        if (argc == 2) {
+        if (argc == 2)
+        {
             conf_file = argv[1];
 
             if (conf_file == "-h")
@@ -178,243 +223,35 @@ int main(int argc, char *argv[])
             }
         }
 
+        mpeworker = make_shared<MuxMPEWorker>();
+
         if (conf_file.empty())
         {
-            printUsage(argv[0], stderr);
-            throw InitException("No configuration file specified");
+            etiLog.level(info) << "No config file specified, waiting for config via API.";
+            api_at_startup = true;
         }
 
-        try
+        if (!api_at_startup)
         {
-            if (stringEndsWith(conf_file, ".json"))
-            {
-                read_json(conf_file, pt);
-            }
-            else
-            {
-                read_info(conf_file, pt);
-            }
-        }
-        catch (runtime_error &e)
-        {
-            throw InitException(e.what());
-        }
+            
+            //TODO: If its runs as app, we need to honour the logging..
 
-        /* Enable Logging to syslog conditionally */
-        if (pt.get<bool>("general.syslog", false))
-        {
-            etiLog.register_backend(std::make_shared<LogToSyslog>());
-        }
+            /* Enable Logging to syslog conditionally */
+            //if (pt.get<bool>("general.syslog", false))
+            //{
+               // etiLog.register_backend(std::make_shared<LogToSyslog>());
+            //}
 
-        const auto startupcheck = pt.get<string>("general.startupcheck", "");
-        if (not startupcheck.empty())
-        {
-            etiLog.level(info) << "Running startup check '" << startupcheck << "'";
-            int wstatus = system(startupcheck.c_str());
-
-            if (WIFEXITED(wstatus))
-            {
-                if (WEXITSTATUS(wstatus) == 0)
-                {
-                    etiLog.level(info) << "Startup check ok";
-                }
-                else
-                {
-                    etiLog.level(error) << "Startup check failed, returned " << WEXITSTATUS(wstatus);
-                    return 1;
-                }
-            }
-            else
-            {
-                etiLog.level(error) << "Startup check failed, child didn't terminate normally";
-                return 1;
-            }
-        }
-
-        etiLog.level(info) << PACKAGE_NAME << " " <<
-#if defined(GITVERSION)
-            GITVERSION <<
-#else
-            PACKAGE_VERSION <<
-#endif
-            " starting up";
-    }
-    catch (const InitException &except)
-    {
-        etiLog.level(error) << "initialisation aborted: " << except.what();
-        returnCode = 1;
-    }
-    catch (const std::invalid_argument &except)
-    {
-        etiLog.level(error) << "Caught invalid argument : " << except.what();
-        returnCode = 1;
-    }
-    catch (const std::out_of_range &except)
-    {
-        etiLog.level(error) << "Caught out of range exception : " << except.what();
-        returnCode = 1;
-    }
-    catch (const std::logic_error &except)
-    {
-        etiLog.level(error) << "Caught logic error : " << except.what();
-        returnCode = 2;
-    }
-    catch (const std::runtime_error &except)
-    {
-        etiLog.level(error) << "Caught runtime error : " << except.what();
-        returnCode = 2;
-    }
-
-    if (returnCode == 0)
-    {
-        std::vector<std::shared_ptr<udp_source_t>> inputs;
-        // Setup Inputs
-        set<string> all_input_names;
-        for (auto pt_input : pt.get_child("inputs"))
-        {
-            string uid = pt_input.first;
-
-            // check for uniqueness of the uid
-            if (all_input_names.count(uid) == 0)
-            {
-                all_input_names.insert(uid);
-            }
-            else
-            {
-                stringstream ss;
-                ss << "input with uid " << uid << " not unique!";
-                throw runtime_error(ss.str());
-            }
-
-            //Build input
-            auto input = make_shared<udp_source_t>();
-            input->name = pt_input.second.get<std::string>("name");
-            input->protocol = pt_input.second.get<std::string>("protocol");
-            input->source = pt_input.second.get<std::string>("source");
-            input->sourceip = pt_input.second.get<std::string>("sourceip");
-            input->sourceport = pt_input.second.get<unsigned int>("sourceport");
-
-            inputs.push_back(input);
-        }
-
-        // Setup output.
-        ptree pt_output = pt.get_child("output");
-
-        auto dest = make_shared<ts_destination_t>();
-        dest->output = pt_output.get<string>("output");
-        dest->payload_pid = pt_output.get<unsigned int>("payload_pid");
-        dest->pmt_pid = pt_output.get<unsigned int>("pmt_pid");
-        dest->ts_id = pt_output.get<unsigned int>("ts_id");
-        dest->service_type = pt_output.get<unsigned int>("service_type");
-        dest->service_id = pt_output.get<unsigned int>("service_id");
-        dest->service_name = pt_output.get<string>("service_name");
-        dest->service_provider_name = pt_output.get<string>("service_provider_name");
-        dest->output = pt_output.get<string>("output");
-        dest->output_host = pt_output.get<string>("output_host");
-        dest->output_port = pt_output.get<unsigned int>("output_port");
-        dest->output_source_address = pt_output.get<string>("output_source_address");
-        dest->output_ttl = pt_output.get<unsigned int>("output_ttl");
-
-        if (dest->output == "srt")
-        {
-            dest->output_srt_passphrase = pt_output.get<string>("output_srt_passphrase");
-        }
-
-        int debuglevel = -1;
-        if (pt.get_child("general").get<string>("tsduck_debug") == "true")
-        {
-            debuglevel = ts::Severity::Debug;
-        } else {
-            debuglevel = ts::Severity::Info;
-        }
-
-        ts::AsyncReport report(debuglevel);
-        ts::TSProcessor tsproc(report);
-
-        // Create and start a background system monitor.
-        ts::SystemMonitor monitor(report);
-        monitor.start();
-
-        // Build tsp options. Accept most default values, except a few ones.
-        ts::TSProcessorArgs opt;
-        opt.app_name = u"odr-muxmpe"; // for error messages only.
-        opt.fixed_bitrate = 5000000;
-        opt.max_flush_pkt = 70;
-
-        opt.input = {u"null", {}};
-
-        ts::UString pat = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><tsduck><PAT version=\"0\" transport_stream_id=\"" + ts::UString::Decimal(dest->ts_id,  0, true, u"", false, ts::SPACE) + u"\" network_PID=\"0x0010\"><service service_id=\"" + ts::UString::Decimal(dest->service_id,  0, true, u"", false, ts::SPACE) + u"\" program_map_PID=\"" + ts::UString::Decimal(dest->pmt_pid,  0, true, u"", false, ts::SPACE) + u"\"/></PAT></tsduck>";
-        ts::UString pmt = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><tsduck><PMT version=\"0\" service_id=\"" + ts::UString::Decimal(dest->service_id,  0, true, u"", false, ts::SPACE) + u"\"><component elementary_PID=\"" + ts::UString::Decimal(dest->payload_pid,  0, true, u"", false, ts::SPACE) + u"\" stream_type=\"" + ts::UString::Decimal(dest->service_type,  0, true, u"", false, ts::SPACE) + u"\"/></PMT></tsduck>";
-        ts::UString sdt = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><tsduck><SDT version=\"0\" current=\"true\" transport_stream_id=\"" + ts::UString::Decimal(dest->service_id,  0, true, u"", false, ts::SPACE) + u"\" original_network_id=\"2\" actual=\"true\"> <service service_id=\"" + ts::UString::Decimal(dest->service_id,  0, true, u"", false, ts::SPACE) + u"\" EIT_schedule=\"false\" EIT_present_following=\"false\" running_status=\"running\" CA_mode=\"false\"><service_descriptor service_type=\"0x0C\" service_name=\"" + ts::UString::FromUTF8(dest->service_name) + u"\" service_provider_name=\"" + ts::UString::FromUTF8(dest->service_provider_name) + u"\"/> </service></SDT></tsduck>";
-
-        opt.plugins = {
-            {u"regulate", {u"--packet-burst", u"14"}},
-            {u"inject", {pat, u"--pid", u"0", u"-s", u"--inter-packet", u"100"}},
-            {u"inject", {pmt, u"--pid", u"256", u"-s", u"--inter-packet", u"100"}},
-            {u"inject", {sdt, u"--pid", u"17", u"-s", u"--inter-packet", u"1000"}},
-        };
-
-        //MPEInject
-        ts::PluginOptions po;
-        po.name = u"mpeinject";
-        po.args.push_back(u"-b");
-        po.args.push_back(u"100000");
-        po.args.push_back(u"--max-queue");
-        po.args.push_back(u"10000");
-        po.args.push_back(u"-p");
-        po.args.push_back(ts::UString::Decimal(dest->payload_pid,  0, true, u"", false, ts::SPACE));
-
-        for (auto input : inputs) {
-            po.args.push_back(ts::UString::FromUTF8(input->source) +u":"+ ts::UString::Decimal(input->sourceport,  0, true, u"", false, ts::SPACE));
-        }
-
-        opt.plugins.push_back(po);
-
-        ts::UString port = ts::UString::Decimal(dest->output_port, 0, true, u"", false, ts::SPACE);
-        if (dest->output == "srt")
-        {
-            if (dest->output_srt_passphrase != "")
-            {
-                opt.output = {u"srt", {u"-c", ts::UString::FromUTF8(dest->output_host) + u":" + port, u"-e", u"--local-interface", ts::UString::FromUTF8(dest->output_source_address), u"--ipttl", ts::UString::Decimal(dest->output_ttl), u"--passphrase", ts::UString::FromUTF8(dest->output_srt_passphrase)}};
-            }
-            else
-            {
-                opt.output = {u"srt", {u"-c", ts::UString::FromUTF8(dest->output_host) + u":" + port, u"-e", u"--local-interface", ts::UString::FromUTF8(dest->output_source_address), u"--ipttl", ts::UString::Decimal(dest->output_ttl)}};
-            }
-        }
-        else if (dest->output == "udp")
-        {
-            opt.output = {u"ip", {u"-e", u"-f", u"-l", ts::UString::FromUTF8(dest->output_source_address), ts::UString::FromUTF8(dest->output_host) + u":" + port}};
+            mpeworker->configureFromFile(conf_file);
+            mpeworker->startUpWithConf();
         }
         else
         {
-            printf("TS Processing failed to start. TS Output not available\n");
-            return -1;
+            runApiServer();
         }
-
-        // Start the TS processing.
-        if (!tsproc.start(opt))
-        {
-            etiLog.log(info, "TS Processing failed to start. TS Output not available\n");
-            return -1;
-        }
-
-        // And wait for TS processing termination.
-        tsproc.waitForTermination();
-        etiLog.log(info, "TS Processing Thread Terminated");
     }
-
-    etiLog.log(debug, "exiting...\n");
-    fflush(stderr);
-
-    if (returnCode != 0)
+    catch (runtime_error &e)
     {
-        etiLog.log(alert, "...aborting\n");
+        throw InitException(e.what());
     }
-    else
-    {
-        etiLog.log(debug, "...done\n");
-    }
-
-    return returnCode;
 }

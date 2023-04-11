@@ -24,7 +24,7 @@ AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CONFIG_SRCDIR([src/MuxMPE.cpp])
 AC_CONFIG_HEADERS([config.h])
-AM_SILENT_RULES([yes])
+# AM_SILENT_RULES([yes])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -52,6 +52,14 @@ PKG_CHECK_MODULES([TSDUCK], [tsduck >= 3.33.0], [
         TSDUCK_PREFIX=`pkg-config --variable=prefix tsduck`
         AC_SUBST([TSDUCK_PREFIX])
 ])
+
+OATPP_INCLUDE_DIRS="-I/usr/local/include/oatpp-1.3.0/oatpp -I/usr/local/include/oatpp-1.3.0/oatpp-swagger"
+OATPP_LIBS="-latomic /usr/local/lib/oatpp-1.3.0/liboatpp-swagger.a /usr/local/lib/oatpp-1.3.0/liboatpp.a "
+AC_DEFINE([OATPP_SWAGGER_RES_PATH], ["/usr/local/include/oatpp-1.3.0/bin/oatpp-swagger/res"], [Define the path to oatpp-swagger res])
+AC_DEFINE([OATPP_BUILD_TESTS], [False], [Define to disable OATPP test build])
+
+AC_SUBST(OATPP_INCLUDE_DIRS)
+AC_SUBST(OATPP_LIBS)
 
 AC_LANG_PUSH([C++])
 AX_CHECK_COMPILE_FLAG([-Wduplicated-cond], [CXXFLAGS="$CXXFLAGS -Wduplicated-cond"], [], ["-Werror"])
@@ -93,3 +101,7 @@ echo "***********************************************"
 echo "Successfuly Configured."
 echo "***********************************************"
 echo
+
+#We need to remove the #define VERSION as its used in the TSDUCK library.
+#We don't use it anywhere in code.
+sed -i '/^#define VERSION/d' ${srcdir}/config.h

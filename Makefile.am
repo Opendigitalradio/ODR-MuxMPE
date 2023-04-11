@@ -40,9 +40,9 @@ lib_charset_sources = lib/charset/charset.cpp \
 					  lib/charset/utf8.h
 
 odr_muxmpe_CFLAGS   =-g -Wall $(INCLUDE) $(PTHREAD_CFLAGS) $(GITVERSION_FLAGS)
-odr_muxmpe_CXXFLAGS =-Wall -std=c++11 $(PTHREAD_CXXFLAGS) $(INCLUDE) $(GITVERSION_FLAGS) $(BOOST_CPPFLAGS) $(TSDUCK_CFLAGS)
+odr_muxmpe_CXXFLAGS =-Wall -std=c++11 $(PTHREAD_CXXFLAGS) $(INCLUDE) $(GITVERSION_FLAGS) $(BOOST_CPPFLAGS) $(TSDUCK_CFLAGS) $(OATPP_INCLUDE_DIRS)
 odr_muxmpe_LDADD    = $(BOOST_LDFLAGS) \
-					 $(PTHREAD_CFLAGS) $(PTHREAD_LIBS) $(BOOST_SYSTEM_LIB) $(TSDUCK_LIBS)
+					 $(PTHREAD_CFLAGS) $(PTHREAD_LIBS) $(BOOST_SYSTEM_LIB) $(TSDUCK_LIBS) $(OATPP_LIBS)
 
 odr_muxmpe_SOURCES  =src/MuxMPE.cpp \
 					 src/utils.cpp \
@@ -51,6 +51,11 @@ odr_muxmpe_SOURCES  =src/MuxMPE.cpp \
 					 lib/Log.h \
 					 lib/Log.cpp \
 					 lib/ThreadsafeQueue.h \
+					 src/MuxMPEWorker.h \
+					 src/MuxMPEWorker.cpp \
+					 src/AppComponent.h \
+					 src/controller/APIController.h \
+					 src/dto/DTOs.h \
 					 $(lib_charset_sources)
 
 EXTRA_DIST	= COPYING NEWS README.md INSTALL.md LICENCE AUTHORS ChangeLog doc \

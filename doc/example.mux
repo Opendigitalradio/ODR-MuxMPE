@@ -49,32 +49,31 @@ inputs {
 }
 
 output {
-         protocol ts
-               ts_id 1
-               service_id 1
-               service_name "DabMux"
-               service_provider_name "ODR-DabMux"
-               payload_pid 1234
-               pmt_pid 256
-               service_type 5
-               output srt
-               output_host 192.168.105.2
-               output_port 5102
-               output_source_address 172.27.159.171
-               output_srt_passphrase odrmuxmpetest
-               output_ttl 64
+ ;        protocol ts
+ ;              ts_id 1
+ ;              service_id 1
+ ;              service_name "DabMux"
+ ;              service_provider_name "ODR-DabMux"
+ ;              payload_pid 1234
+ ;              pmt_pid 256
+ ;              output srt
+ ;              output_host 192.168.105.2
+ ;              output_port 5102
+ ;              output_source_address 172.27.159.171
+ ;              output_srt_passphrase odrmuxmpetest
+ ;              output_ttl 64
 ; UDP
-;                protocol ts
-;                ts_id 1
-;                service_id 1
-;                service_name "DabMux"
-;                service_provider_name "ODR-DabMux"
-;                payload_pid 1234
-;                pmt_pid 256
-;                service_type 5
-;                output udp
-;                output_host 192.168.105.2
-;                output_port 5186
-;                output_source_address 192.168.104.6
-;                output_ttl 64
+                bitrate 5000000
+                protocol ts
+                ts_id 1
+                service_id 1
+                service_name "DabMux"
+                service_provider_name "ODR-DabMux"
+                payload_pid 1234
+                pmt_pid 256
+                output udp
+                output_host 192.168.105.2
+                output_port 5186
+                output_source_address 172.27.159.171
+                output_ttl 64
 }

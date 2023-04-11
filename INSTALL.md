@@ -29,6 +29,11 @@ Compile and download from source.
     git clone https://github.com/tsduck/tsduck.git
     sudo make NODEKTEC=1 NOVATEK=1 NOPCSC=1 install
 
+##oatpp
+There is a helper script, run:
+    
+     scripts/install-oatpp-modules.sh
+
 
 ## Compilation
 The *master* branch in the repository always points to the

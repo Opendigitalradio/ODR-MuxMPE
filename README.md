@@ -10,6 +10,7 @@ Features of ODR-MuxMPE:
 - Configuration file, see doc/example.mux and doc/example.json
 - Fully compliant Transport Stream output to SRT/UDP.
 - Logging to syslog
+- Can be API driven for easy K8S/Docker use. - SwaggerUI available: <host>:8000/swagger/ui - POST /config takes Config in JSON
 
 Tested with [fedi2eti](https://github.com/piratfm/eti-tools) and [dablin](https://github.com/Opendigitalradio/dablin/).
 
