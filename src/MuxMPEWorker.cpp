@@ -9,7 +9,6 @@ MuxMPEWorker::MuxMPEWorker()
 MuxMPEWorker::~MuxMPEWorker()
 {
     // Destructor implementation
-    // No dynamic memory allocation, so no specific cleanup required
 }
 
 void MuxMPEWorker::startUpWithConf()
@@ -155,8 +154,7 @@ void MuxMPEWorker::BringUpMux()
     if (!tsproc->start(opt))
     {
         etiLog.log(info, "TS Processing failed to start. TS Output not available\n");
-        // return -1;
-    }
+     }
 
     // And wait for TS processing termination.
     tsproc->waitForTermination();

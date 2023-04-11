@@ -15,7 +15,7 @@
 #include OATPP_CODEGEN_BEGIN(ApiController) //<-- Begin Codegen
 
 /**
- * Sample Api Controller.
+ * Api Controller.
  */
 class APIController : public oatpp::web::server::api::ApiController
 {
@@ -133,7 +133,6 @@ public:
       }
       catch (const std::exception &e)
       {
-        // catch any exceptions and return a 500 status with error message
         auto feedbackDto = FeedbackDto::createShared();
         feedbackDto->description = e.what();
         feedbackDto->name = "CONFIG";
