@@ -53,6 +53,7 @@ private:
   std::string tap_ip;
   std::string tap_subnet_mask;
   bool use_tap = false;
+  bool tap_interface_exists(const std::string& tap_interface_name);
 };
 
 #endif // MUX_MPE_WORKER_H

@@ -27,6 +27,26 @@ MuxMPEWorker::~MuxMPEWorker()
     // Destructor implementation*
 }
 
+
+bool MuxMPEWorker::tap_interface_exists(const std::string& tap_interface_name)
+{
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, tap_interface_name.c_str(), IFNAMSIZ);
+
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0)
+    {
+        perror("socket");
+        return false;
+    }
+
+    bool exists = (ioctl(sockfd, SIOCGIFINDEX, &ifr) >= 0);
+
+    close(sockfd);
+    return exists;
+}
+
 int MuxMPEWorker::createTapInterface(std::string tap_name, std::string tap_ip)
 {
     int fd = open("/dev/net/tun", O_RDWR);
@@ -143,6 +163,9 @@ void MuxMPEWorker::BringUpMux()
     if (unicastinputs.size() > 0)
     {
         use_tap = true;
+       
+       if (!tap_interface_exists(tap_interface))
+       {
         // Call create_tap_interface() on the multicast_tap instance
         int tap_fd = createTapInterface(tap_interface, tap_ip);
         if (tap_fd < 0)
@@ -164,6 +187,7 @@ void MuxMPEWorker::BringUpMux()
 
             t.detach();
         }
+       }
     }
 
     ts::AsyncReport report(debuglevel);
