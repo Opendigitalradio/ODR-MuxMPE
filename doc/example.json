@@ -2,38 +2,55 @@
     "_comment": "This is the same as example.mux, but in JSON format.",
     "general": {
         "syslog": false,
-        "tsduck_debug": false
+        "tsduck_debug": true
+    },
+    "unicasttomcast": {
+        "tap_interface": "mpe",
+        "tap_ip": "192.168.109.1",
+        "tap_subnet_mask": "255.255.255.0",
+        "inputs": [
+            {
+                "listenport": 50011,
+                "mcast_address": "239.100.200.1",
+                "mcast_port": 5001
+            },
+            {
+                "listenport": 50012,
+                "mcast_address": "239.100.200.2",
+                "mcast_port": 5001
+            }
+        ]
     },
     "inputs": {
         "mux-1": {
             "name": "Test1",
             "protocol": "udp",
-            "source" : "239.199.200.1",
-            "sourceport":  5001,
-            "sourceip" :   ""    
+            "source": "239.100.200.1",
+            "sourceport": 5001,
+            "sourceip": ""
         },
         "mux-2": {
-             "name": "Test2",
-             "protocol": "udp",
-             "source" : "239.199.200.2",
-             "sourceport":  5001,
-             "sourceip" :   ""    
-            }
+            "name": "Test2",
+            "protocol": "udp",
+            "source": "239.199.200.2",
+            "sourceport": 5001,
+            "sourceip": ""
+        }
     },
     "output": {
-        "bitrate": 5000000,
         "protocol": "ts",
+        "bitrate": 5000000,
         "ts_id": 1,
         "service_id": 1,
         "service_name": "DabMux",
         "service_provider_name": "ODR-DabMux",
         "payload_pid": 1234,
-        "pmt_pid" : 256,
-        "output" :"srt",
-        "output_host" : "192.168.105.2",
-        "output_port" : 5102,
-        "output_source_address" : "172.27.159.171",
-        "output_srt_passphrase" : "odrmuxmpetest",
+        "pmt_pid": 256,
+        "output": "srt",
+        "output_host": "192.168.105.2",
+        "output_port": 5103,
+        "output_source_address": "",
+        "output_srt_passphrase": "testtesttest",
         "output_ttl": 64
     }
 }
