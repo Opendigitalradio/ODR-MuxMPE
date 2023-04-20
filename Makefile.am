@@ -56,6 +56,8 @@ odr_muxmpe_SOURCES  =src/MuxMPE.cpp \
 					 src/AppComponent.h \
 					 src/controller/APIController.h \
 					 src/dto/DTOs.h \
+					 src/MulticastTap.h \
+					 src/MulticastTap.cpp \
 					 $(lib_charset_sources)
 
 EXTRA_DIST	= COPYING NEWS README.md INSTALL.md LICENCE AUTHORS ChangeLog doc \

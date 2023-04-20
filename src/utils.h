@@ -105,3 +105,9 @@ struct udp_source_t {
     std::string sourceip; 
 };
 
+struct unicast_to_mcast_t {
+    unsigned int listenport;
+    std::string mcast_address;
+    unsigned int mcast_port;
+};
+

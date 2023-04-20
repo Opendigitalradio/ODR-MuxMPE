@@ -60,9 +60,6 @@ RUN  ./bootstrap.sh && ./configure && make -j8 && make install
 # Build the final image
 FROM ubuntu:22.04
 ENV  DEBIAN_FRONTEND=noninteractive
-## Update system
-RUN  apt-get update \
-     && apt-get upgrade --yes
 
 ## Copy objects built in the builder phase
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
@@ -77,6 +74,7 @@ COPY --from=builder /usr/local/etc/udev/rules.d/80-tsduck.rules /usr/local/etc/u
 COPY --from=builder /usr/local/include/oatpp-1.3.0 /usr/local/include/oatpp-1.3.0
 COPY --from=builder /usr/local/lib/oatpp-1.3.0 /usr/local/lib/oatpp-1.3.0
 
+RUN apt-get update && apt-get upgrade -y
 ## Install production libraries
 RUN  apt-get install --yes \
           libboost-system1.74.0 \

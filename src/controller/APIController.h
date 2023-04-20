@@ -57,6 +57,7 @@ public:
     }
   }
 
+
   ENDPOINT("PUT", "/start", createStartup)
   {
 
@@ -153,6 +154,19 @@ public:
       return createDtoResponse(Status::CODE_400, feedbackDto);
     }
   }
+
+  ENDPOINT("GET", "/config", getConfig)
+  {
+   auto objectMapper = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
+    std::string jsonConfigStr = m_myWorker->getConfig();
+    auto jsonConfig = oatpp::String(jsonConfigStr.c_str());
+
+    auto configDto = objectMapper->readFromString<oatpp::Object<ConfigDTO>>(jsonConfig);
+
+    return createDtoResponse(Status::CODE_200, configDto);
+  }
+
 };
 
 #include OATPP_CODEGEN_END(ApiController) //<-- End Codegen

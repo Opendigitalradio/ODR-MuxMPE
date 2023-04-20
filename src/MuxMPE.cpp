@@ -143,11 +143,6 @@ void runApiServer()
 
     oatpp::network::Server server(connectionProvider, connectionHandler);
 
-    
-
-    /* Print info about server port */
-    //OATPP_LOGI("MyApp", "Server running on port %s", connectionProvider->getProperty("port").getData());
-
     /* Run server */
     server.run();
 }
@@ -183,22 +178,6 @@ int main(int argc, char *argv[])
         }
     }
 
-#ifdef _WIN32
-    if (SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST) == 0)
-    {
-        etiLog.log(warn, "Can't increase priority: %s\n", strerror(errno));
-    }
-#else
-    // Use the lowest real-time priority for this thread, and switch to real-time scheduling
-    const int policy = SCHED_RR;
-    sched_param sp;
-    sp.sched_priority = sched_get_priority_min(policy);
-    int thread_prio_ret = pthread_setschedparam(pthread_self(), policy, &sp);
-    if (thread_prio_ret != 0)
-    {
-        etiLog.level(error) << "Could not set real-time priority for thread:" << thread_prio_ret;
-    }
-#endif
 
     etiLog.level(info) << PACKAGE_NAME << " " <<
 #if defined(GITVERSION)

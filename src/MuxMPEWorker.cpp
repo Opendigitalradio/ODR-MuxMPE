@@ -3,12 +3,93 @@
 
 MuxMPEWorker::MuxMPEWorker()
 {
-    // Constructor implementation
+// Constructor implementation
+#ifdef _WIN32
+    if (SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST) == 0)
+    {
+        etiLog.log(warn, "Can't increase priority: %s\n", strerror(errno));
+    }
+#else
+    // Use the lowest real-time priority for this thread, and switch to real-time scheduling
+    const int policy = SCHED_RR;
+    sched_param sp;
+    sp.sched_priority = sched_get_priority_min(policy);
+    int thread_prio_ret = pthread_setschedparam(pthread_self(), policy, &sp);
+    if (thread_prio_ret != 0)
+    {
+        etiLog.level(error) << "Could not set real-time priority for thread:" << thread_prio_ret;
+    }
+#endif
 }
 
 MuxMPEWorker::~MuxMPEWorker()
 {
-    // Destructor implementation
+    // Destructor implementation*
+}
+
+int MuxMPEWorker::createTapInterface(std::string tap_name, std::string tap_ip)
+{
+    int fd = open("/dev/net/tun", O_RDWR);
+    if (fd < 0)
+    {
+        perror("open");
+        return -1;
+    }
+
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+    strncpy(ifr.ifr_name, tap_name.c_str(), IFNAMSIZ);
+
+    if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0)
+    {
+        perror("ioctl");
+        close(fd);
+        return -1;
+    }
+
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0)
+    {
+        perror("socket");
+        close(fd);
+        return -1;
+    }
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(tap_ip.c_str());
+    memcpy(&ifr.ifr_addr, &addr, sizeof(addr));
+
+    if (ioctl(sockfd, SIOCSIFADDR, &ifr) < 0)
+    {
+        perror("ioctl");
+        close(sockfd);
+        close(fd);
+        return -1;
+    }
+
+    if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) < 0)
+    {
+        perror("ioctl");
+        close(sockfd);
+        close(fd);
+        return -1;
+    }
+
+    ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+
+    if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0)
+    {
+        perror("ioctl");
+        close(sockfd);
+        close(fd);
+        return -1;
+    }
+
+    close(sockfd);
+    return fd;
 }
 
 void MuxMPEWorker::startUpWithConf()
@@ -21,6 +102,7 @@ bool MuxMPEWorker::startup()
 {
     if ((haveConfig) && (!isRunning))
     {
+
         ts_thread = new std::thread(&MuxMPEWorker::BringUpMux, this);
 
         if (ts_thread)
@@ -57,6 +139,33 @@ bool MuxMPEWorker::stop()
 void MuxMPEWorker::BringUpMux()
 {
     isRunning = true;
+
+    if (unicastinputs.size() > 0)
+    {
+        use_tap = true;
+        // Call create_tap_interface() on the multicast_tap instance
+        int tap_fd = createTapInterface(tap_interface, tap_ip);
+        if (tap_fd < 0)
+        {
+            std::cerr << "Failed to create TAP interface" << std::endl;
+            return;
+        }
+
+        for (auto input : unicastinputs)
+        {
+            etiLog.log(debug, "Setting up Unicast to Multicast: Interface: %s, Listen Port: %d, Mcast Address:%s, Mcast Port: %d\n", tap_interface.c_str(), input->listenport, input->mcast_address.c_str(), input->mcast_port);
+
+            // Create a shared_ptr of MulticastTap
+            std::shared_ptr<MulticastTap> tap = std::make_shared<MulticastTap>(tap_interface, input->mcast_address, input->listenport, input->mcast_port, 65535);
+
+            // Create a thread using a lambda to capture the shared_ptr and run the MulticastTap::run function
+            std::thread t([tap]()
+                          { tap->run(); });
+
+            t.detach();
+        }
+    }
+
     ts::AsyncReport report(debuglevel);
     tsproc = new ts::TSProcessor(report);
 
@@ -92,12 +201,19 @@ void MuxMPEWorker::BringUpMux()
     // MPEInject
     ts::PluginOptions po;
     po.name = u"mpeinject";
+
     po.args.push_back(u"-b");
     po.args.push_back(u"100000");
     po.args.push_back(u"--max-queue");
-    po.args.push_back(u"10000");
+    po.args.push_back(u"100");
     po.args.push_back(u"-p");
     po.args.push_back(ts::UString::Decimal(dest->payload_pid, 0, true, u"", false, ts::SPACE));
+
+    if (use_tap)
+    {
+        po.args.push_back(u"-l");
+        po.args.push_back(ts::UString::FromUTF8(tap_ip).c_str());
+    }
 
     for (auto input : inputs)
     {
@@ -154,7 +270,7 @@ void MuxMPEWorker::BringUpMux()
     if (!tsproc->start(opt))
     {
         etiLog.log(info, "TS Processing failed to start. TS Output not available\n");
-     }
+    }
 
     // And wait for TS processing termination.
     tsproc->waitForTermination();
@@ -178,19 +294,58 @@ void MuxMPEWorker::configureFromFile(std::string conf_file)
 
 void MuxMPEWorker::configureFromJSON(std::string json)
 {
+    config = json;
     std::istringstream jsons(json);
     read_json(jsons, pt);
     configureAll();
 }
 
+std::string MuxMPEWorker::getConfig()
+{
+    return config;
+}
+
 void MuxMPEWorker::configureAll()
 {
     inputs.clear();
-    // Setup Inputs
+    // unicastinputs.clear();
+    //  Setup Inputs
     set<string> all_input_names;
 
     etiLog.log(info, "Setting New Config");
     boost::property_tree::write_json(std::cout, pt, false);
+
+    if (pt.get_child("general").get<string>("tsduck_debug") == "true")
+    {
+        debuglevel = ts::Severity::Debug;
+    }
+    else
+    {
+        debuglevel = ts::Severity::Info;
+    }
+
+    if (pt.count("unicasttomcast"))
+    {
+        auto unicasttomcast_node = pt.get_child("unicasttomcast");
+
+        tap_interface = unicasttomcast_node.get<std::string>("tap_interface");
+        tap_ip = unicasttomcast_node.get<std::string>("tap_ip");
+        tap_subnet_mask = unicasttomcast_node.get<std::string>("tap_subnet_mask");
+
+        for (const auto &input_node : unicasttomcast_node.get_child("inputs"))
+        {
+            auto uni2mcast = make_shared<unicast_to_mcast_t>();
+
+            uni2mcast->listenport = input_node.second.get<int>("listenport");
+            uni2mcast->mcast_address = input_node.second.get<std::string>("mcast_address");
+            uni2mcast->mcast_port = input_node.second.get<int>("mcast_port");
+            unicastinputs.push_back(uni2mcast);
+        }
+    }
+    else
+    {
+        std::cerr << "No unicasttomcast node found in JSON file" << std::endl;
+    }
 
     for (auto pt_input : pt.get_child("inputs"))
     {
@@ -241,14 +396,6 @@ void MuxMPEWorker::configureAll()
         dest->output_srt_passphrase = pt_output.get<string>("output_srt_passphrase");
     }
 
-    if (pt.get_child("general").get<string>("tsduck_debug") == "true")
-    {
-        debuglevel = ts::Severity::Debug;
-    }
-    else
-    {
-        debuglevel = ts::Severity::Info;
-    }
     haveConfig = true;
 }
 

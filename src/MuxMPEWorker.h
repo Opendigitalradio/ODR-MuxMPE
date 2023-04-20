@@ -15,6 +15,9 @@
 #include <functional>
 #include <algorithm>
 #include <tsduck.h>
+#include <iostream>
+#include <thread>
+#include "MulticastTap.h"
 
 using namespace std;
 using boost::property_tree::ptree;
@@ -30,6 +33,9 @@ public:
   void configureFromJSON(std::string config_file);
   bool status();
   void startUpWithConf();
+  int createTapInterface(std::string tap_name, std::string tap_ip);
+  std::string getConfig();
+
 private:
   void configureAll();
   void BringUpMux();
@@ -39,9 +45,14 @@ private:
   int debuglevel = -1;
   ptree pt;
   std::vector<std::shared_ptr<udp_source_t>> inputs;
+  std::vector<std::shared_ptr<unicast_to_mcast_t>> unicastinputs;
   ts_destination_t *dest;
   ts::TSProcessor *tsproc;
-  
+  std::string config;
+  std::string tap_interface;
+  std::string tap_ip;
+  std::string tap_subnet_mask;
+  bool use_tap = false;
 };
 
 #endif // MUX_MPE_WORKER_H
