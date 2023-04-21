@@ -171,7 +171,7 @@ void MuxMPEWorker::BringUpMux()
         if (tap_fd < 0)
         {
             std::cerr << "Failed to create TAP interface" << std::endl;
-            return;
+            exit(EXIT_FAILURE);
         }
 
         for (auto input : unicastinputs)
