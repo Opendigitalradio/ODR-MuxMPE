@@ -2,7 +2,7 @@
     "_comment": "This is the same as example.mux, but in JSON format.",
     "general": {
         "syslog": false,
-        "tsduck_debug": true
+        "tsduck_debug": false
     },
     "unicasttomcast": {
         "tap_interface": "mpe",

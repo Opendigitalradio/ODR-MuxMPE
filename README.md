@@ -9,8 +9,9 @@ Features of ODR-MuxMPE:
 - Standards-compliant MPE Multiplexer
 - Configuration file, see doc/example.mux and doc/example.json
 - Fully compliant Transport Stream output to SRT/UDP.
-- Logging to syslog
-- Can be API driven for easy K8S/Docker use. - SwaggerUI available: <host>:8000/swagger/ui - POST /config takes Config in JSON
+- Logging to syslog.
+- Unicast to Multicast for converting Streams for MPE use.
+- Can be API driven for easy K8S/Docker use. - SwaggerUI available: <host>:8000/swagger/ui - POST /config takes Config in JSON. See doc/example.json
 
 To start with API don't pass a config file, 
 

@@ -45,8 +45,26 @@ inputs {
         sourceport  5001
         sourceip    ""       
     }
-
 }
+
+unicasttomcast {
+        tap_interface "mpe"
+        tap_ip": "192.168.109.1"
+        tap_subnet_mask": "255.255.255.0"
+        inputs
+        {
+            {
+                "listenport": 50011,
+                "mcast_address": "239.100.200.1",
+                "mcast_port": 5001
+            },
+            {
+                "listenport": 50012,
+                "mcast_address": "239.100.200.2",
+                "mcast_port": 5001
+            }
+        }
+    }
 
 output {
  ;        protocol ts
