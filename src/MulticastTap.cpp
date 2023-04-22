@@ -27,7 +27,7 @@
         struct sockaddr_in input_address;
         memset(&input_address, 0, sizeof(input_address));
         input_address.sin_family = AF_INET;
-        input_address.sin_addr.s_addr = inet_addr("172.27.159.171");
+        input_address.sin_addr.s_addr = INADDR_ANY;
         input_address.sin_port = htons(recv_port_);
         if (bind(input_socket, (struct sockaddr *)&input_address, sizeof(input_address)) < 0)
         {
