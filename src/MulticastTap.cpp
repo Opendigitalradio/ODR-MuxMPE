@@ -78,6 +78,5 @@
 
     void MulticastTap::run()
     {
-        
         udp_to_multicast();
     }

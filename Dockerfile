@@ -83,10 +83,12 @@ RUN  apt-get install --yes \
           tzdata \
      && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /dev/net && \
+    mknod /dev/net/tun c 10 200 && \
+    chmod 0666 /dev/net/tun
 
 
-EXPOSE 9001-9016
-EXPOSE 9201
+EXPOSE 50001-50099
 EXPOSE 8000
 ENTRYPOINT ["odr-muxmpe"]
 LABEL org.opencontainers.image.vendor="Open Digital Radio" 

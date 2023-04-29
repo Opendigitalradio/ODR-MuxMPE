@@ -27,8 +27,7 @@ MuxMPEWorker::~MuxMPEWorker()
     // Destructor implementation*
 }
 
-
-bool MuxMPEWorker::tap_interface_exists(const std::string& tap_interface_name)
+bool MuxMPEWorker::tap_interface_exists(const std::string &tap_interface_name)
 {
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
@@ -163,34 +162,34 @@ void MuxMPEWorker::BringUpMux()
     if (unicastinputs.size() > 0)
     {
         use_tap = true;
-       
-       if (!tap_interface_exists(tap_interface))
-       {
-        // Call create_tap_interface() on the multicast_tap instance
-        int tap_fd = createTapInterface(tap_interface, tap_ip);
-        if (tap_fd < 0)
+
+        if (!tap_interface_exists(tap_interface))
         {
-            std::cerr << "Failed to create TAP interface" << std::endl;
-            exit(EXIT_FAILURE);
+            // Call create_tap_interface() on the multicast_tap instance
+            int tap_fd = createTapInterface(tap_interface, tap_ip);
+            if (tap_fd < 0)
+            {
+                std::cerr << "Failed to create TAP interface" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            for (auto input : unicastinputs)
+            {
+                etiLog.log(debug, "Setting up Unicast to Multicast: Interface: %s, Listen Port: %d, Mcast Address:%s, Mcast Port: %d\n", tap_interface.c_str(), input->listenport, input->mcast_address.c_str(), input->mcast_port);
+
+                // Create a shared_ptr of MulticastTap
+                std::shared_ptr<MulticastTap> tap = std::make_shared<MulticastTap>(tap_interface, input->mcast_address, input->listenport, input->mcast_port, 65535);
+
+                // Create a thread using a lambda to capture the shared_ptr and run the MulticastTap::run function
+                std::thread t([tap]()
+                              { tap->run(); });
+
+                t.detach();
+            }
         }
-
-        for (auto input : unicastinputs)
-        {
-            etiLog.log(debug, "Setting up Unicast to Multicast: Interface: %s, Listen Port: %d, Mcast Address:%s, Mcast Port: %d\n", tap_interface.c_str(), input->listenport, input->mcast_address.c_str(), input->mcast_port);
-
-            // Create a shared_ptr of MulticastTap
-            std::shared_ptr<MulticastTap> tap = std::make_shared<MulticastTap>(tap_interface, input->mcast_address, input->listenport, input->mcast_port, 65535);
-
-            // Create a thread using a lambda to capture the shared_ptr and run the MulticastTap::run function
-            std::thread t([tap]()
-                          { tap->run(); });
-
-            t.detach();
-        }
-       }
     }
 
-    ts::AsyncReport report(debuglevel);
+    ETILogAsyncReport report(debuglevel);
     tsproc = new ts::TSProcessor(report);
 
     // Create and start a background system monitor.
@@ -286,7 +285,7 @@ void MuxMPEWorker::BringUpMux()
     }
     else
     {
-        printf("TS Processing failed to start. TS Output not available\n");
+        etiLog.log(info, "TS Processing failed to start. TS Output not available\n");
         // return -1;
     }
 
@@ -337,7 +336,12 @@ void MuxMPEWorker::configureAll()
     set<string> all_input_names;
 
     etiLog.log(info, "Setting New Config");
-    boost::property_tree::write_json(std::cout, pt, false);
+    std::stringstream ss;
+    boost::property_tree::write_json(ss, pt, false);
+
+    // Log the JSON output using etiLog
+    std::string json_output = ss.str();
+    etiLog.log(info, json_output.c_str());
 
     if (pt.get_child("general").get<string>("tsduck_debug") == "true")
     {
@@ -368,7 +372,7 @@ void MuxMPEWorker::configureAll()
     }
     else
     {
-        std::cerr << "No unicasttomcast node found in JSON file" << std::endl;
+        etiLog.log(info, "No unicasttomcast node found in JSON file");
     }
 
     for (auto pt_input : pt.get_child("inputs"))
@@ -382,9 +386,8 @@ void MuxMPEWorker::configureAll()
         }
         else
         {
-            stringstream ss;
-            ss << "input with uid " << uid << " not unique!";
-            throw runtime_error(ss.str());
+            etiLog.log(info, "input with uid %s not unique!", uid);
+            throw runtime_error("input not unique!");
         }
 
         // Build input

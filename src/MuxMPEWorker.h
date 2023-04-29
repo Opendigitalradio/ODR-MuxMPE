@@ -19,7 +19,22 @@
 #include <thread>
 #include "MulticastTap.h"
 
+#include "tsAsyncReport.h"
+#include <iostream>
 using namespace std;
+
+class ETILogAsyncReport : public ts::AsyncReport
+{
+public:
+  ETILogAsyncReport(int debug_level) : ts::AsyncReport(debug_level) {}
+
+protected:
+  virtual void writeLog(int severity, const ts::UString &msg) override
+  {
+    etiLog.log(log_level_t::info, msg.toUTF8().c_str());
+  }
+};
+
 using boost::property_tree::ptree;
 
 class MuxMPEWorker
@@ -53,7 +68,7 @@ private:
   std::string tap_ip;
   std::string tap_subnet_mask;
   bool use_tap = false;
-  bool tap_interface_exists(const std::string& tap_interface_name);
+  bool tap_interface_exists(const std::string &tap_interface_name);
 };
 
 #endif // MUX_MPE_WORKER_H
